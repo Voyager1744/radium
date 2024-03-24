@@ -1,7 +1,7 @@
 import asyncio
 import os
-from scr import downloader
-from scr import hash_calculator
+from src import downloader
+from src import hash_calculator
 
 URL = (
     'https://gitea.radium.group/api/v1/repos/radium/' +

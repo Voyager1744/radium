@@ -10,32 +10,44 @@ import aiohttp
 logging.basicConfig(level=logging.ERROR)
 
 
-async def fetch_files(session, url):
+async def fetch_files(session: aiohttp.ClientSession, url: str) -> dict:
     """Fetch files from the repository."""
-    async with session.get(url) as response:
-        if response.status == aiohttp.http.HTTPStatus.OK:
-            return await response.json()
-        logging.error(
-            'Failed to fetch files: {status}'.format(status=response.status),
-        )
+    try:
+        async with session.get(url) as response:
+            if response.status == aiohttp.http.HTTPStatus.OK:
+                return await response.json()
+            logging.error(
+                f'Failed to fetch files: {response.status} - {await response.text()}'
+            )
+            return None
+    except aiohttp.ClientError as e:
+        logging.error(f'Failed to fetch files: {e}')
         return None
 
 
 async def download_file(session, file_url, filename, semaphore):
-    """Download a file."""
-    async with semaphore:
-        async with session.get(file_url) as response:
-            if response.status == aiohttp.http.HTTPStatus.OK:
-                file_data = await response.read()
-                with open(filename, 'wb') as file_handle:
-                    file_handle.write(file_data)
-            else:
-                logging.error(
-                    'Failed to download file: {file_url}'.format(
-                        file_url=file_url,
-                    ),
-                )
+    """Download a file asynchronously.
 
+    Args:
+        session: aiohttp.ClientSession: A session object for making HTTP requests.
+        file_url (str): URL of the file to download.
+        filename (str): Name of the file to save.
+        semaphore: asyncio.Semaphore: A semaphore to control concurrency.
+
+    Returns:
+        None
+    """
+    async with semaphore:
+        try:
+            async with session.get(file_url) as response:
+                if response.status == aiohttp.http.HTTPStatus.OK:
+                    file_data = await response.read()
+                    with open(filename, 'wb') as file_handle:
+                        file_handle.write(file_data)
+                else:
+                    logging.error(f'Failed to download file: {file_url}. Status: {response.status}')
+        except aiohttp.ClientError as e:
+            logging.error(f'Error downloading file: {file_url}. {e}')
 
 async def download_files(session, directory_info, temp_folder, semaphore):
     """Download files from the repository."""
